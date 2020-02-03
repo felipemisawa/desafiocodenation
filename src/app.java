@@ -1,8 +1,11 @@
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,11 +15,15 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import com.google.gson.Gson;
+
 public class app {
 
 	private final static HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
+	private final static String saida = "C:\\Projetos\\ws-eclipse\\Desafio Codenation\\output\\answer.json";
 
-	public static void main(String[] args) throws IOException, InterruptedException, ParseException {
+	@SuppressWarnings("resource")
+	public static void main(String[] args) throws IOException, InterruptedException, ParseException, NoSuchAlgorithmException {
 
 		Map<Integer, Character> alfabetoNum = new HashMap<Integer, Character>() {
 			private static final long serialVersionUID = 1L;
@@ -51,7 +58,7 @@ public class app {
 
 			}
 		};
-		
+
 		Map<Character, Integer> alfabetoChar = new HashMap<Character, Integer>() {
 			private static final long serialVersionUID = 1L;
 
@@ -88,6 +95,8 @@ public class app {
 
 		Resposta resposta = new Resposta();
 		JSONParser parser = new JSONParser();
+		FileWriter fw = new FileWriter(saida);
+		Gson gson = new Gson();
 		char[] inputArray;
 		ArrayList<Character> outputArray = new ArrayList<Character>();
 		HttpResponse<String> response;
@@ -106,12 +115,20 @@ public class app {
 				}
 			}
 
+			resposta.setDecifrado(outputArray.stream().map(String::valueOf).collect(Collectors.joining()));
+			resposta.setResumoCriptografico(sha1(resposta.getDecifrado()));
+			try {
+				fw.write(gson.toJson(resposta));
+			} finally {
+				fw.close();
+			}
+			
 			System.out.println(resposta);
-			System.out.println("Output: " + outputArray.stream().map(String::valueOf).collect(Collectors.joining()));
+
 		} else {
 			throw new RuntimeException("Error on get request. Error code: " + response.statusCode());
 		}
-		
+
 	}
 
 	private static HttpResponse<String> sendGet() throws IOException, InterruptedException {
@@ -122,5 +139,16 @@ public class app {
 		return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
 	}
+	
+	static String sha1(String input) throws NoSuchAlgorithmException {
+        MessageDigest mDigest = MessageDigest.getInstance("SHA1");
+        byte[] result = mDigest.digest(input.getBytes());
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < result.length; i++) {
+            sb.append(Integer.toString((result[i] & 0xff) + 0x100, 16).substring(1));
+        }
+         
+        return sb.toString();
+    }
 
 }
